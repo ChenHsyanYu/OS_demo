@@ -1,0 +1,13 @@
+.app {
+  min-height: 100vh;
+}
+
+.content {
+  padding: 24px;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}

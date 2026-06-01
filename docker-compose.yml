@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # Ollama LLM 服務
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    entrypoint: []
+    command:
+      - "/bin/sh"
+      - "-c"
+      - "ollama serve & until ollama list >/dev/null 2>&1; do sleep 1; done; ollama pull llama3:8b; wait"
+    networks:
+      - os-antivirus
+
+  # 後端 FastAPI 服務
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: os-antivirus-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3:8b
+      - JWT_SECRET=change-this-secret-key
+      - DEBUG=False
+    volumes:
+      - /var/log:/var/log:ro
+      - ./backend/app:/app/app
+    depends_on:
+      - ollama
+    networks:
+      - os-antivirus
+
+  # 前端 React 服務
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: os-antivirus-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+    networks:
+      - os-antivirus
+
+  # Nginx 反向代理
+  nginx:
+    image: nginx:latest
+    container_name: os-antivirus-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - os-antivirus
+
+volumes:
+  ollama_data:
+
+networks:
+  os-antivirus:
+    driver: bridge

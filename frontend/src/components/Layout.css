@@ -1,0 +1,8 @@
+.sider {
+  background: #001529;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+}
