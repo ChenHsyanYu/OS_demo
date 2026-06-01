@@ -12,6 +12,9 @@ from app.modules.log_parser import LogParser
 import json
 from datetime import datetime
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+_executor = ThreadPoolExecutor(max_workers=2)
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -29,7 +32,7 @@ class ChatRequest(BaseModel):
     alert_id: Optional[str] = None
 
 
-@router.post("/")
+@router.post("")
 async def chat(request: ChatRequest) -> StreamingResponse:
     """
     LLM 對話端點（串流回應）
@@ -55,38 +58,48 @@ async def chat(request: ChatRequest) -> StreamingResponse:
         )
         session.messages.append(user_msg)
         
-        # 生成回應流
-        def response_generator():
-            try:
-                # 構建上下文
-                context = _build_context(session)
-                
-                # 調用 Ollama
-                full_response = ""
-                for chunk in ollama_client.generate_analysis(
-                    events=[],
-                    context=context + f"\n\n用戶提問: {request.message}"
-                ):
-                    full_response += chunk
-                    yield json.dumps({
+        # 生成回應流（在 thread pool 執行同步 Ollama 呼叫，避免 block event loop）
+        async def async_response_generator():
+            loop = asyncio.get_event_loop()
+            queue: asyncio.Queue = asyncio.Queue()
+
+            def run_ollama():
+                try:
+                    context = _build_context(session)
+                    full_response = ""
+                    for chunk in ollama_client.generate_analysis(
+                        events=[],
+                        context=context + f"\n\n用戶提問: {request.message}"
+                    ):
+                        full_response += chunk
+                        loop.call_soon_threadsafe(queue.put_nowait, json.dumps({
+                            "session_id": session_id,
+                            "content": chunk,
+                            "timestamp": datetime.now().isoformat(),
+                        }) + "\n")
+
+                    if full_response:
+                        assistant_msg = ChatMessage(role="assistant", content=full_response)
+                        session.messages.append(assistant_msg)
+                except Exception as e:
+                    loop.call_soon_threadsafe(queue.put_nowait, json.dumps({
+                        "error": str(e),
                         "session_id": session_id,
-                        "content": chunk,
-                        "timestamp": datetime.now().isoformat(),
-                    }) + "\n"
-                
-                if full_response:
-                    assistant_msg = ChatMessage(
-                        role="assistant",
-                        content=full_response,
-                    )
-                    session.messages.append(assistant_msg)
-            except Exception as e:
-                yield json.dumps({
-                    "error": str(e),
-                    "session_id": session_id,
-                }) + "\n"
-        
-        return StreamingResponse(response_generator(), media_type="application/x-ndjson")
+                    }) + "\n")
+                finally:
+                    loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+
+            future = loop.run_in_executor(_executor, run_ollama)
+
+            while True:
+                item = await queue.get()
+                if item is None:
+                    break
+                yield item
+
+            await future
+
+        return StreamingResponse(async_response_generator(), media_type="application/x-ndjson")
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

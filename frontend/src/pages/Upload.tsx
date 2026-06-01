@@ -87,7 +87,7 @@ const UploadPage: React.FC = () => {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
-      render: (text: string) => text?.substring(0, 50) + '...' || '-',
+      render: (text: string) => text ? text.substring(0, 50) + (text.length > 50 ? '...' : '') : '-',
     },
   ];
 

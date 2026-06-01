@@ -162,7 +162,20 @@ const DashboardPage: React.FC = () => {
         title="最近警訊"
         style={{ marginTop: '24px' }}
         extra={
-          <Button icon={<RadarChartOutlined />} onClick={fetchAlerts}>
+          <Button
+            icon={<RadarChartOutlined />}
+            onClick={async () => {
+              setLoading(true);
+              try {
+                await apiService.scanSystemLogs();
+                await fetchAlerts();
+              } catch (err) {
+                setError('掃描失敗');
+              } finally {
+                setLoading(false);
+              }
+            }}
+          >
             掃描系統
           </Button>
         }

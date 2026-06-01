@@ -22,9 +22,9 @@ class LogParser:
             # 權限提升事件
             "privilege_escalation": {
                 "patterns": [
-                    r"sudo\[.*?\]:\s+.*?COMMAND=",  # sudo 命令執行
+                    r"sudo(\[.*?\])?:\s+.*?COMMAND=",  # sudo 命令執行（有無 PID 皆可）
                     r"sudo.*?:\s+(.*?)\s+:\s+command\s+not\s+allowed",  # sudo 失敗
-                    r"su\[.*?\]:\s+.*?\-\s+(.*?)\s+on",  # su 提升
+                    r"su(\[.*?\])?:\s+.*?\-\s+(.*?)\s+on",  # su 提升
                 ],
                 "event_type": EventType.PRIVILEGE_ESCALATION,
                 "default_severity": SeverityEnum.MEDIUM,
@@ -73,22 +73,143 @@ class LogParser:
         }
     
     def parse_log_file(self, file_path: str) -> List[LogEvent]:
-        """解析日誌檔案"""
+        """解析日誌檔案，自動偵測 auditd 或 syslog 格式"""
         events = []
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                for line_num, line in enumerate(f, 1):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    
-                    event = self._parse_line(line, file_path)
-                    if event:
-                        events.append(event)
+                content = f.read()
+
+            # 偵測 auditd 格式
+            if 'msg=audit(' in content or 'type=SYSCALL' in content:
+                return self.parse_auditd_content(content)
+
+            # syslog 格式逐行解析
+            for line in content.splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                event = self._parse_line(line, file_path)
+                if event:
+                    events.append(event)
         except Exception as e:
             print(f"Error parsing log file {file_path}: {e}")
-        
+
         return events
+
+    def parse_auditd_content(self, content: str) -> List[LogEvent]:
+        """解析 auditd 格式的完整內容（ausearch 輸出）"""
+        events = []
+        blocks = re.split(r'\n?----\n?', content)
+        for block in blocks:
+            block = block.strip()
+            if not block:
+                continue
+            event = self._parse_auditd_block(block)
+            if event:
+                events.append(event)
+        return events
+
+    def _parse_auditd_block(self, block: str) -> Optional[LogEvent]:
+        """解析單一 auditd 事件區塊（可能含多行）"""
+        lines = [l.strip() for l in block.splitlines() if l.strip()]
+        types = []
+        fields = {}
+        timestamp = None
+        raw_lines = []
+
+        for line in lines:
+            # ausearch 加的 time-> 行
+            time_match = re.match(r'time->(.+)', line)
+            if time_match:
+                try:
+                    timestamp = datetime.strptime(
+                        time_match.group(1).strip(), "%a %b %d %H:%M:%S %Y"
+                    )
+                except Exception:
+                    pass
+                continue
+
+            # type=XXX msg=audit(ts:seq): ...
+            type_match = re.match(r'type=(\w+)\s+msg=audit\((\d+\.\d+):\d+\):\s*(.*)', line)
+            if not type_match:
+                continue
+
+            record_type = type_match.group(1)
+            ts_raw = float(type_match.group(2))
+            kv_str = type_match.group(3)
+
+            types.append(record_type)
+            raw_lines.append(line)
+
+            if timestamp is None:
+                try:
+                    timestamp = datetime.fromtimestamp(ts_raw)
+                except Exception:
+                    pass
+
+            # 解析 key=value（值可能有引號）
+            for m in re.finditer(r'(\w+)=(?:"([^"]*)"|([\S]*))', kv_str):
+                key = m.group(1)
+                value = m.group(2) if m.group(2) is not None else m.group(3)
+                if key not in fields:
+                    fields[key] = value
+
+        if not types or timestamp is None:
+            return None
+
+        event_type, severity, description = self._classify_auditd_block(types, fields)
+        if event_type is None:
+            return None
+
+        raw_log = ' | '.join(raw_lines[:2])[:500]
+        return LogEvent(
+            event_id=f"{timestamp.timestamp()}_{hash(raw_log) % 10000}",
+            timestamp=timestamp,
+            source_file="auditd",
+            type=event_type,
+            severity=severity,
+            raw_log=raw_log,
+            description=description,
+        )
+
+    def _classify_auditd_block(self, types: List[str], fields: Dict[str, str]):
+        """根據 auditd 欄位分類事件"""
+        cwd       = fields.get('cwd', '').strip('"')
+        proctitle = fields.get('proctitle', '').strip('"')
+        argc      = fields.get('argc', '')
+        key       = fields.get('key', '').strip('"')
+        uid       = fields.get('uid', '')
+        gid       = fields.get('gid', '')
+        euid      = fields.get('euid', '')
+
+        # CVE-2021-4034：argc=0 是核心特徵
+        if 'EXECVE' in types and argc == '0':
+            desc = "疑似 CVE-2021-4034 (PwnKit)：pkexec 以空參數執行 (argc=0)"
+            if cwd:
+                desc += f"，工作目錄：{cwd}"
+            return EventType.PRIVILEGE_ESCALATION, SeverityEnum.CRITICAL, desc
+
+        # 從已知 exploit 目錄執行
+        if cwd and re.search(r'CVE-\d{4}-\d+|/exploit', cwd, re.IGNORECASE):
+            desc = f"從可疑目錄執行程式：{cwd}"
+            return EventType.PRIVILEGE_ESCALATION, SeverityEnum.HIGH, desc
+
+        # priv_change：setuid/setgid syscall 成功取得 root
+        if key == 'priv_change' and 'SYSCALL' in types:
+            if uid == '0' and gid == '0':
+                desc = f"完全提權成功（uid=0, gid=0），程式：{proctitle}"
+                return EventType.PRIVILEGE_ESCALATION, SeverityEnum.CRITICAL, desc
+            if uid == '0' or euid == '0':
+                desc = f"權限提升至 root（uid={uid}, euid={euid}），程式：{proctitle}"
+                return EventType.PRIVILEGE_ESCALATION, SeverityEnum.HIGH, desc
+
+        # exec_track：可疑程式呼叫 pkexec
+        if key == 'exec_track' and 'SYSCALL' in types:
+            if proctitle and re.search(r'\./exploit|exploit', proctitle, re.IGNORECASE):
+                desc = f"可疑程式透過 pkexec 執行：{proctitle}"
+                return EventType.SUSPICIOUS_EXECUTION, SeverityEnum.HIGH, desc
+
+        return None, None, None
     
     def parse_json_log(self, json_data: Dict[str, Any]) -> Optional[LogEvent]:
         """解析 JSON 格式日誌 (journald export)"""
@@ -141,20 +262,25 @@ class LogParser:
     
     def _extract_timestamp(self, line: str) -> datetime:
         """提取時間戳"""
-        # 嘗試匹配常見的日誌時間格式
-        patterns = [
-            r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})",  # ISO format
-            r"(\w+\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})",  # 標準 syslog 格式
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, line)
-            if match:
-                try:
-                    return datetime.fromisoformat(match.group(1))
-                except:
-                    pass
-        
+        # ISO format: 2024-01-01T10:00:00
+        iso_match = re.search(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", line)
+        if iso_match:
+            try:
+                return datetime.fromisoformat(iso_match.group(1))
+            except:
+                pass
+
+        # syslog format: Jan  1 10:00:00 or Jun  1 10:01:15
+        syslog_match = re.search(r"(\w{3}\s+\d{1,2}\s+\d{2}:\d{2}:\d{2})", line)
+        if syslog_match:
+            try:
+                return datetime.strptime(
+                    f"{datetime.now().year} {syslog_match.group(1)}",
+                    "%Y %b %d %H:%M:%S"
+                )
+            except:
+                pass
+
         return datetime.now()
     
     def _classify_event(self, line: str) -> tuple:
@@ -164,7 +290,7 @@ class LogParser:
         # 掃描所有模式
         for category, config in self.patterns.items():
             for pattern in config["patterns"]:
-                if re.search(pattern, line_lower):
+                if re.search(pattern, line_lower, re.IGNORECASE):
                     return config["event_type"], config["default_severity"]
         
         # 預設為低風險

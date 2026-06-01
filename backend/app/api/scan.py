@@ -11,6 +11,7 @@ from app.models import LogEvent, Alert, SeverityEnum
 from app.modules.log_parser import LogParser, EventCorrelator
 from app.modules.ollama_client import OllamaClient, RiskScorer
 from app.config import settings
+from app.api.alerts import add_alert
 
 router = APIRouter(prefix="/api/scan", tags=["scan"])
 
@@ -80,8 +81,9 @@ async def scan_system_logs() -> dict:
         for event_group in event_groups:
             if event_group:
                 alert = _create_alert(event_group)
+                add_alert(alert)
                 alerts.append(alert)
-        
+
         return {
             "status": "success",
             "total_events": len(events),

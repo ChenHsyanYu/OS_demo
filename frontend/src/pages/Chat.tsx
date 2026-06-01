@@ -195,58 +195,82 @@ const ChatPage: React.FC = () => {
             </p>
           </Empty>
         ) : (
-          <List
-            dataSource={messages}
-            renderItem={(msg) => (
-              <div
-                style={{
-                  marginBottom: '12px',
-                  textAlign: msg.role === 'user' ? 'right' : 'left',
-                }}
-              >
+          <>
+            <List
+              dataSource={messages}
+              renderItem={(msg) => (
+                <div
+                  style={{
+                    marginBottom: '12px',
+                    textAlign: msg.role === 'user' ? 'right' : 'left',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'inline-block',
+                      maxWidth: '70%',
+                      padding: '8px 12px',
+                      borderRadius: '4px',
+                      backgroundColor:
+                        msg.role === 'user' ? '#1890ff' : '#f0f0f0',
+                      color: msg.role === 'user' ? '#fff' : '#000',
+                      wordWrap: 'break-word',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {msg.role === 'assistant' ? (
+                      <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</Markdown>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: '12px',
+                      color: '#999',
+                      marginTop: '4px',
+                    }}
+                  >
+                    {formatDate(msg.timestamp)}
+                  </div>
+                </div>
+              )}
+            />
+            {loading && messages[messages.length - 1]?.role === 'user' && (
+              <div style={{ marginBottom: '12px', textAlign: 'left' }}>
                 <div
                   style={{
                     display: 'inline-block',
-                    maxWidth: '70%',
                     padding: '8px 12px',
                     borderRadius: '4px',
-                    backgroundColor:
-                      msg.role === 'user' ? '#1890ff' : '#f0f0f0',
-                    color: msg.role === 'user' ? '#fff' : '#000',
-                    wordWrap: 'break-word',
-                    whiteSpace: 'pre-wrap',
+                    backgroundColor: '#f0f0f0',
+                    color: '#888',
+                    fontSize: '13px',
                   }}
                 >
-                  {msg.role === 'assistant' ? (
-                    <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</Markdown>
-                  ) : (
-                    msg.content
-                  )}
-                </div>
-                <div
-                  style={{
-                    fontSize: '12px',
-                    color: '#999',
-                    marginTop: '4px',
-                  }}
-                >
-                  {formatDate(msg.timestamp)}
+                  LLM 推理中...
                 </div>
               </div>
             )}
-          />
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ display: 'flex', gap: '8px' }}>
-        <Input
-          placeholder="輸入您的問題或安全相關的查詢..."
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+        <Input.TextArea
+          placeholder="輸入問題（Enter 送出，Shift+Enter 換行）"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onPressEnter={handleSendMessage}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
           disabled={loading}
-          allowClear
+          autoSize={{ minRows: 1, maxRows: 4 }}
+          style={{ flex: 1 }}
         />
         <Button
           type="primary"

@@ -7,6 +7,8 @@ from app.models import UploadResponse
 from app.utils.file_handler import FileValidator, FileStorage
 from app.modules.log_parser import LogParser, EventCorrelator
 from app.modules.ollama_client import RiskScorer
+from app.api.alerts import add_alert
+from app.api.scan import _create_alert
 import os
 from datetime import datetime
 
@@ -61,10 +63,16 @@ async def upload_log(file: UploadFile = File(...)) -> UploadResponse:
         
         # 關聯事件
         event_groups = correlator.correlate_events(events)
-        
+
+        # 建立並存入警報
+        for event_group in event_groups:
+            if event_group:
+                alert = _create_alert(event_group)
+                add_alert(alert)
+
         # 計算分析 ID
         analysis_id = f"analysis_{timestamp}"
-        
+
         return UploadResponse(
             status="success",
             message=f"成功解析 {len(events)} 個事件",
