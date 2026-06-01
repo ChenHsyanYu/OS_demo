@@ -20,8 +20,52 @@ import {
 import apiService from '../services/api';
 import { ChatMessage } from '../types';
 import { formatDate } from '../utils/helpers';
-import ReactMarkdown from 'react-markdown';
+import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+const markdownComponents = {
+  table: ({ children }: any) => (
+    <table style={{ borderCollapse: 'collapse', width: '100%', marginTop: '8px', marginBottom: '8px' }}>
+      {children}
+    </table>
+  ),
+  thead: ({ children }: any) => (
+    <thead style={{ backgroundColor: '#fafafa', borderBottom: '2px solid #d9d9d9' }}>
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }: any) => (
+    <tbody>
+      {children}
+    </tbody>
+  ),
+  tr: ({ children }: any) => (
+    <tr style={{ borderBottom: '1px solid #d9d9d9' }}>
+      {children}
+    </tr>
+  ),
+  th: ({ children }: any) => (
+    <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 'bold', borderRight: '1px solid #d9d9d9' }}>
+      {children}
+    </th>
+  ),
+  td: ({ children }: any) => (
+    <td style={{ padding: '8px 12px', borderRight: '1px solid #d9d9d9' }}>
+      {children}
+    </td>
+  ),
+  code: ({ inline, children }: any) => (
+    inline ? (
+      <code style={{ backgroundColor: '#f5f5f5', padding: '2px 6px', borderRadius: '2px', fontFamily: 'monospace' }}>
+        {children}
+      </code>
+    ) : (
+      <code style={{ display: 'block', backgroundColor: '#f5f5f5', padding: '12px', borderRadius: '4px', overflow: 'auto', fontFamily: 'monospace', margin: '8px 0' }}>
+        {children}
+      </code>
+    )
+  ),
+};
 
 const ChatPage: React.FC = () => {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -174,7 +218,7 @@ const ChatPage: React.FC = () => {
                   }}
                 >
                   {msg.role === 'assistant' ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                    <Markdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{msg.content}</Markdown>
                   ) : (
                     msg.content
                   )}
