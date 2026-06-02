@@ -154,6 +154,8 @@ const ChatPage: React.FC = () => {
   return (
     <Card
       title="LLM 智能對話"
+      style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+      styles={{ body: { display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' } }}
       extra={
         <Space>
           <Button
@@ -179,7 +181,7 @@ const ChatPage: React.FC = () => {
 
       <div
         style={{
-          height: '500px',
+          flex: 1,
           overflowY: 'auto',
           marginBottom: '16px',
           padding: '16px',

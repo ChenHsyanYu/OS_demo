@@ -46,7 +46,7 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ height: '100vh', overflow: 'hidden' }}>
       <Layout.Sider
         breakpoint="lg"
         collapsedWidth={0}
@@ -62,24 +62,24 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         />
       </Layout.Sider>
 
-      <Layout>
-        <Layout.Header style={{ background: '#fff', padding: '0 24px', borderBottom: '1px solid #f0f0f0' }}>
+      <Layout style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <Layout.Header style={{ background: '#fff', padding: '0 24px', borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
           <h2 style={{ margin: 0 }}>{getBreadcrumbTitle()}</h2>
         </Layout.Header>
 
-        <Layout.Content style={{ margin: '24px 16px' }}>
-          <Breadcrumb style={{ marginBottom: '16px' }}>
+        <Layout.Content style={{ margin: '24px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          <Breadcrumb style={{ marginBottom: '16px', flexShrink: 0 }}>
             <Breadcrumb.Item>
               <Link to="/">首頁</Link>
             </Breadcrumb.Item>
             <Breadcrumb.Item>{getBreadcrumbTitle()}</Breadcrumb.Item>
           </Breadcrumb>
-          <div style={{ background: '#fff', padding: '24px', borderRadius: '2px' }}>
+          <div style={{ background: '#fff', padding: '24px', borderRadius: '2px', flex: 1, overflow: 'auto' }}>
             {children}
           </div>
         </Layout.Content>
 
-        <Layout.Footer style={{ textAlign: 'center', borderTop: '1px solid #f0f0f0' }}>
+        <Layout.Footer style={{ textAlign: 'center', borderTop: '1px solid #f0f0f0', flexShrink: 0 }}>
           OS 掃毒系統 v1.1.0 ©2026
         </Layout.Footer>
       </Layout>
