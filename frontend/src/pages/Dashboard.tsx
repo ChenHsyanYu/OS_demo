@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, Row, Col, Statistic, Button, Space, Spin, Alert } from 'antd';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Card, Row, Col, Statistic, Button, Spin, Alert } from 'antd';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { ReloadOutlined, RadarChartOutlined } from '@ant-design/icons';
 import apiService from '../services/api';
 import { Alert as AlertType } from '../types';
@@ -18,7 +18,7 @@ const DashboardPage: React.FC = () => {
       setAlerts(response.data.alerts);
       setError(null);
     } catch (err) {
-      setError('無法獲取警訊數據');
+      setError('Unable to load alert data.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -29,24 +29,24 @@ const DashboardPage: React.FC = () => {
     fetchAlerts();
   }, []);
 
-  // 統計數據
+  // Summary metrics
   const criticalCount = alerts.filter(a => a.severity === 'Critical').length;
   const highCount = alerts.filter(a => a.severity === 'High').length;
   const mediumCount = alerts.filter(a => a.severity === 'Medium').length;
   const totalEvents = alerts.reduce((sum, a) => sum + a.event_count, 0);
 
-  // 風險評分分佈
+  // Risk score distribution
   const riskData = [
     { name: 'Critical', value: criticalCount, color: '#ff4d4f' },
     { name: 'High', value: highCount, color: '#ff7875' },
     { name: 'Medium', value: mediumCount, color: '#ffa940' },
   ].filter(d => d.value > 0);
 
-  // 時間軸數據
+  // Timeline data
   const timelineData = alerts
     .slice(0, 10)
     .map((alert, idx) => ({
-      time: new Date(alert.timestamp).toLocaleTimeString('zh-TW'),
+      time: new Date(alert.timestamp).toLocaleTimeString('en-US'),
       risk: alert.risk_score,
       name: alert.title.substring(0, 10),
     }));
@@ -55,14 +55,13 @@ const DashboardPage: React.FC = () => {
     <Spin spinning={loading}>
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '16px' }} />}
 
-      {/* 統計卡片 */}
+      {/* Summary cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="危機警訊"
+              title="Critical Alerts"
               value={criticalCount}
-              suffix="個"
               valueStyle={{ color: '#ff4d4f' }}
             />
           </Card>
@@ -70,9 +69,8 @@ const DashboardPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="高危警訊"
+              title="High Alerts"
               value={highCount}
-              suffix="個"
               valueStyle={{ color: '#ff7875' }}
             />
           </Card>
@@ -80,9 +78,8 @@ const DashboardPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="中危警訊"
+              title="Medium Alerts"
               value={mediumCount}
-              suffix="個"
               valueStyle={{ color: '#ffa940' }}
             />
           </Card>
@@ -90,19 +87,18 @@ const DashboardPage: React.FC = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card>
             <Statistic
-              title="總事件數"
+              title="Total Events"
               value={totalEvents}
-              suffix="個"
             />
           </Card>
         </Col>
       </Row>
 
-      {/* 圖表 */}
+      {/* Charts */}
       <Row gutter={[16, 16]}>
         <Col xs={24} lg={12}>
           <Card
-            title="風險級別分佈"
+            title="Risk Level Distribution"
             extra={
               <Button icon={<ReloadOutlined />} onClick={fetchAlerts} type="primary" />
             }
@@ -128,13 +124,13 @@ const DashboardPage: React.FC = () => {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <p style={{ textAlign: 'center', color: '#999' }}>暫無數據</p>
+              <p style={{ textAlign: 'center', color: '#999' }}>No data</p>
             )}
           </Card>
         </Col>
 
         <Col xs={24} lg={12}>
-          <Card title="風險評分時間軸">
+          <Card title="Risk Score Timeline">
             {timelineData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={timelineData}>
@@ -151,15 +147,15 @@ const DashboardPage: React.FC = () => {
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <p style={{ textAlign: 'center', color: '#999' }}>暫無數據</p>
+              <p style={{ textAlign: 'center', color: '#999' }}>No data</p>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* 最近警訊列表 */}
+      {/* Recent alerts */}
       <Card
-        title="最近警訊"
+        title="Recent Alerts"
         style={{ marginTop: '24px' }}
         extra={
           <Button
@@ -170,13 +166,13 @@ const DashboardPage: React.FC = () => {
                 await apiService.scanSystemLogs();
                 await fetchAlerts();
               } catch (err) {
-                setError('掃描失敗');
+                setError('Scan failed.');
               } finally {
                 setLoading(false);
               }
             }}
           >
-            掃描系統
+            Scan System
           </Button>
         }
       >
@@ -193,10 +189,10 @@ const DashboardPage: React.FC = () => {
           >
             <div style={{ fontWeight: 'bold' }}>{alert.title}</div>
             <div style={{ fontSize: '12px', color: '#666' }}>
-              {formatDate(alert.timestamp)} | 風險評分: {alert.risk_score}
+              {formatDate(alert.timestamp)} | Risk Score: {alert.risk_score}
             </div>
             <div style={{ fontSize: '12px', color: '#666' }}>
-              事件數: {alert.event_count}
+              Events: {alert.event_count}
             </div>
           </div>
         ))}

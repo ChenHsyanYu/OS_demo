@@ -1,5 +1,5 @@
 """
-API 路由 - 文件上傳和分析
+API routes - file upload and analysis
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -23,33 +23,33 @@ correlator = EventCorrelator()
 @router.post("/log")
 async def upload_log(file: UploadFile = File(...)) -> UploadResponse:
     """
-    上傳並解析日誌文件
+    Upload and parse a log file.
     
-    支援的格式：.log, .txt（最大 50 MB）
+    Supported formats: .log and .txt, up to 50 MB.
     """
     try:
-        # 驗證檔案
+        # Validate file
         content = await file.read()
         is_valid, error_msg = file_validator.validate_upload(file.filename, len(content))
         
         if not is_valid:
             raise HTTPException(status_code=400, detail=error_msg)
         
-        # 檢查 Magic Number
+        # Check magic number
         ext = file.filename.split('.')[-1].lower()
         if not file_validator.check_magic_number(content, ext):
-            raise HTTPException(status_code=400, detail="不有效的檔案格式")
+            raise HTTPException(status_code=400, detail="Invalid file format")
         
-        # 保存檔案
+        # Save file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         saved_filename = f"{timestamp}_{file.filename}"
         file_path = file_storage.save_upload(saved_filename, content)
         
-        # 解析日誌
+        # Parse log
         events = log_parser.parse_log_file(file_path)
         
         if not events:
-            # 嘗試作為單個消息解析
+            # Try parsing as individual messages
             try:
                 decoded = content.decode('utf-8')
                 lines = decoded.split('\n')
@@ -61,21 +61,21 @@ async def upload_log(file: UploadFile = File(...)) -> UploadResponse:
             except:
                 pass
         
-        # 關聯事件
+        # Correlate events
         event_groups = correlator.correlate_events(events)
 
-        # 建立並存入警報
+        # Create and store alerts
         for event_group in event_groups:
             if event_group:
                 alert = _create_alert(event_group)
                 add_alert(alert)
 
-        # 計算分析 ID
+        # Generate analysis ID
         analysis_id = f"analysis_{timestamp}"
 
         return UploadResponse(
             status="success",
-            message=f"成功解析 {len(events)} 個事件",
+            message=f"Parsed {len(events)} events successfully",
             analysis_id=analysis_id,
             events=events,
         )
@@ -83,4 +83,4 @@ async def upload_log(file: UploadFile = File(...)) -> UploadResponse:
     except HTTPException as e:
         raise e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"上傳處理失敗: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Upload processing failed: {str(e)}")

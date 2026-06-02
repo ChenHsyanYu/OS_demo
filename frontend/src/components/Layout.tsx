@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Menu, Breadcrumb } from 'antd';
-import { DesktopOutlined, FileOutlined, TeamOutlined, UserOutlined, MessageOutlined } from '@ant-design/icons';
+import { DesktopOutlined, FileOutlined, TeamOutlined, MessageOutlined } from '@ant-design/icons';
 import { useLocation, Link } from 'react-router-dom';
 import './Layout.css';
 
@@ -15,34 +15,34 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
     {
       key: 'dashboard',
       icon: <DesktopOutlined />,
-      label: <Link to="/">儀表板</Link>,
+      label: <Link to="/">Dashboard</Link>,
     },
     {
       key: 'upload',
       icon: <FileOutlined />,
-      label: <Link to="/upload">日誌上傳</Link>,
+      label: <Link to="/upload">Log Upload</Link>,
     },
     {
       key: 'alerts',
       icon: <TeamOutlined />,
-      label: <Link to="/alerts">警訊中心</Link>,
+      label: <Link to="/alerts">Alert Center</Link>,
     },
     {
       key: 'chat',
       icon: <MessageOutlined />,
-      label: <Link to="/chat">智能對話</Link>,
+      label: <Link to="/chat">AI Chat</Link>,
     },
   ];
 
   const getBreadcrumbTitle = () => {
     const pathMap: Record<string, string> = {
-      '/': '儀表板',
-      '/upload': '日誌上傳',
-      '/alerts': '警訊中心',
-      '/chat': '智能對話',
-      '/alert': '警訊詳情',
+      '/': 'Dashboard',
+      '/upload': 'Log Upload',
+      '/alerts': 'Alert Center',
+      '/chat': 'AI Chat',
+      '/alert': 'Alert Details',
     };
-    return pathMap[location.pathname] || '首頁';
+    return pathMap[location.pathname] || 'Home';
   };
 
   return (
@@ -53,7 +53,7 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         style={{ background: '#fff' }}
       >
         <div style={{ padding: '16px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold' }}>
-          OS 掃毒系統
+          OS Security Scanner
         </div>
         <Menu
           mode="inline"
@@ -70,7 +70,7 @@ const AppLayout: React.FC<LayoutProps> = ({ children }) => {
         <Layout.Content style={{ margin: '24px 16px', flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <Breadcrumb style={{ marginBottom: '16px', flexShrink: 0 }}>
             <Breadcrumb.Item>
-              <Link to="/">首頁</Link>
+              <Link to="/">Home</Link>
             </Breadcrumb.Item>
             <Breadcrumb.Item>{getBreadcrumbTitle()}</Breadcrumb.Item>
           </Breadcrumb>

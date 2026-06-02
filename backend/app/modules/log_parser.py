@@ -1,6 +1,6 @@
 """
-日誌解析模組
-支援 Linux 日誌格式：syslog、journald、auditd、auth.log、kern.log
+Log parsing module
+Supports Linux log formats: syslog, journald, auditd, auth.log, and kern.log.
 """
 
 import re
@@ -11,61 +11,61 @@ from app.models import LogEvent, EventType, SeverityEnum
 
 
 class LogParser:
-    """日誌解析器"""
+    """Log parser"""
     
     def __init__(self):
         self.patterns = self._initialize_patterns()
     
     def _initialize_patterns(self) -> Dict[str, Dict[str, Any]]:
-        """初始化解析規則"""
+        """Initialize parsing rules"""
         return {
-            # 權限提升事件
+            # Privilege escalation events
             "privilege_escalation": {
                 "patterns": [
-                    r"sudo(\[.*?\])?:\s+.*?COMMAND=",  # sudo 命令執行（有無 PID 皆可）
-                    r"sudo.*?:\s+(.*?)\s+:\s+command\s+not\s+allowed",  # sudo 失敗
-                    r"su(\[.*?\])?:\s+.*?\-\s+(.*?)\s+on",  # su 提升
+                    r"sudo(\[.*?\])?:\s+.*?COMMAND=",  # sudo command execution, with or without PID
+                    r"sudo.*?:\s+(.*?)\s+:\s+command\s+not\s+allowed",  # sudo failure
+                    r"su(\[.*?\])?:\s+.*?\-\s+(.*?)\s+on",  # su escalation
                 ],
                 "event_type": EventType.PRIVILEGE_ESCALATION,
                 "default_severity": SeverityEnum.MEDIUM,
             },
-            # 異常登入
+            # Anomalous login
             "anomalous_login": {
                 "patterns": [
-                    r"Invalid user.*?from\s+(\S+)\s+port",  # SSH 無效用戶
-                    r"Failed password for.*?from\s+(\S+)\s+port",  # SSH 密碼失敗
-                    r"authentication failure.*?user=(.*?)\s+",  # 認證失敗
-                    r"failed.*?sshd.*?port",  # SSH 連線失敗
+                    r"Invalid user.*?from\s+(\S+)\s+port",  # Invalid SSH user
+                    r"Failed password for.*?from\s+(\S+)\s+port",  # Failed SSH password
+                    r"authentication failure.*?user=(.*?)\s+",  # Authentication failure
+                    r"failed.*?sshd.*?port",  # Failed SSH connection
                 ],
                 "event_type": EventType.ANOMALOUS_LOGIN,
                 "default_severity": SeverityEnum.HIGH,
             },
-            # 可疑程式執行
+            # Suspicious program execution
             "suspicious_execution": {
                 "patterns": [
-                    r"SUID.*?executed",  # SUID 執行
-                    r"cron.*?cmd.*?=",  # Cron 任務
-                    r"execve.*?name=",  # 程式執行
+                    r"SUID.*?executed",  # SUID execution
+                    r"cron.*?cmd.*?=",  # Cron task
+                    r"execve.*?name=",  # Program execution
                 ],
                 "event_type": EventType.SUSPICIOUS_EXECUTION,
                 "default_severity": SeverityEnum.MEDIUM,
             },
-            # 網路異常
+            # Network anomaly
             "network_anomaly": {
                 "patterns": [
-                    r"Connection.*?attempt",  # 連線嘗試
-                    r"port scan|portscanning",  # 連接埠掃描
-                    r"DNS.*?query|query\s+name",  # DNS 查詢
+                    r"Connection.*?attempt",  # Connection attempt
+                    r"port scan|portscanning",  # Port scan
+                    r"DNS.*?query|query\s+name",  # DNS query
                 ],
                 "event_type": EventType.NETWORK_ANOMALY,
                 "default_severity": SeverityEnum.MEDIUM,
             },
-            # 檔案竄改
+            # File tampering
             "file_tampering": {
                 "patterns": [
-                    r"file.*?changed|changed\s+\(mode\)|changed\s+\(size\)",  # 檔案變更
-                    r"/etc/.*?modified",  # /etc 檔案修改
-                    r"/bin/.*?modified|/sbin/.*?modified",  # 二進位修改
+                    r"file.*?changed|changed\s+\(mode\)|changed\s+\(size\)",  # File change
+                    r"/etc/.*?modified",  # /etc file modification
+                    r"/bin/.*?modified|/sbin/.*?modified",  # Binary modification
                 ],
                 "event_type": EventType.FILE_TAMPERING,
                 "default_severity": SeverityEnum.HIGH,
@@ -73,17 +73,17 @@ class LogParser:
         }
     
     def parse_log_file(self, file_path: str) -> List[LogEvent]:
-        """解析日誌檔案，自動偵測 auditd 或 syslog 格式"""
+        """Parse a log file and auto-detect auditd or syslog format"""
         events = []
         try:
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
-            # 偵測 auditd 格式
+            # Detect auditd format
             if 'msg=audit(' in content or 'type=SYSCALL' in content:
                 return self.parse_auditd_content(content)
 
-            # syslog 格式逐行解析
+            # Parse syslog format line by line
             for line in content.splitlines():
                 line = line.strip()
                 if not line:
@@ -97,7 +97,7 @@ class LogParser:
         return events
 
     def parse_auditd_content(self, content: str) -> List[LogEvent]:
-        """解析 auditd 格式的完整內容（ausearch 輸出）"""
+        """Parse full auditd content from ausearch output"""
         events = []
         blocks = re.split(r'\n?----\n?', content)
         for block in blocks:
@@ -110,7 +110,7 @@ class LogParser:
         return events
 
     def _parse_auditd_block(self, block: str) -> Optional[LogEvent]:
-        """解析單一 auditd 事件區塊（可能含多行）"""
+        """Parse a single auditd event block, possibly containing multiple lines"""
         lines = [l.strip() for l in block.splitlines() if l.strip()]
         types = []
         fields = {}
@@ -118,7 +118,7 @@ class LogParser:
         raw_lines = []
 
         for line in lines:
-            # ausearch 加的 time-> 行
+            # time-> line added by ausearch
             time_match = re.match(r'time->(.+)', line)
             if time_match:
                 try:
@@ -147,7 +147,7 @@ class LogParser:
                 except Exception:
                     pass
 
-            # 解析 key=value（值可能有引號）
+            # Parse key=value fields, where values may be quoted
             for m in re.finditer(r'(\w+)=(?:"([^"]*)"|([\S]*))', kv_str):
                 key = m.group(1)
                 value = m.group(2) if m.group(2) is not None else m.group(3)
@@ -173,7 +173,7 @@ class LogParser:
         )
 
     def _classify_auditd_block(self, types: List[str], fields: Dict[str, str]):
-        """根據 auditd 欄位分類事件"""
+        """Classify an event from auditd fields"""
         cwd       = fields.get('cwd', '').strip('"')
         proctitle = fields.get('proctitle', '').strip('"')
         argc      = fields.get('argc', '')
@@ -182,37 +182,37 @@ class LogParser:
         gid       = fields.get('gid', '')
         euid      = fields.get('euid', '')
 
-        # CVE-2021-4034：argc=0 是核心特徵
+        # CVE-2021-4034: argc=0 is a core indicator
         if 'EXECVE' in types and argc == '0':
-            desc = "疑似 CVE-2021-4034 (PwnKit)：pkexec 以空參數執行 (argc=0)"
+            desc = "Possible CVE-2021-4034 (PwnKit): pkexec executed with empty arguments (argc=0)"
             if cwd:
-                desc += f"，工作目錄：{cwd}"
+                desc += f", working directory: {cwd}"
             return EventType.PRIVILEGE_ESCALATION, SeverityEnum.CRITICAL, desc
 
-        # 從已知 exploit 目錄執行
+        # Execution from a known exploit directory
         if cwd and re.search(r'CVE-\d{4}-\d+|/exploit', cwd, re.IGNORECASE):
-            desc = f"從可疑目錄執行程式：{cwd}"
+            desc = f"Program executed from a suspicious directory: {cwd}"
             return EventType.PRIVILEGE_ESCALATION, SeverityEnum.HIGH, desc
 
-        # priv_change：setuid/setgid syscall 成功取得 root
+        # priv_change: setuid/setgid syscall successfully obtained root
         if key == 'priv_change' and 'SYSCALL' in types:
             if uid == '0' and gid == '0':
-                desc = f"完全提權成功（uid=0, gid=0），程式：{proctitle}"
+                desc = f"Full privilege escalation succeeded (uid=0, gid=0), program: {proctitle}"
                 return EventType.PRIVILEGE_ESCALATION, SeverityEnum.CRITICAL, desc
             if uid == '0' or euid == '0':
-                desc = f"權限提升至 root（uid={uid}, euid={euid}），程式：{proctitle}"
+                desc = f"Privilege escalated to root (uid={uid}, euid={euid}), program: {proctitle}"
                 return EventType.PRIVILEGE_ESCALATION, SeverityEnum.HIGH, desc
 
-        # exec_track：可疑程式呼叫 pkexec
+        # exec_track: suspicious program called pkexec
         if key == 'exec_track' and 'SYSCALL' in types:
             if proctitle and re.search(r'\./exploit|exploit', proctitle, re.IGNORECASE):
-                desc = f"可疑程式透過 pkexec 執行：{proctitle}"
+                desc = f"Suspicious program executed through pkexec: {proctitle}"
                 return EventType.SUSPICIOUS_EXECUTION, SeverityEnum.HIGH, desc
 
         return None, None, None
     
     def parse_json_log(self, json_data: Dict[str, Any]) -> Optional[LogEvent]:
-        """解析 JSON 格式日誌 (journald export)"""
+        """Parse JSON log format from journald export"""
         try:
             timestamp = datetime.fromisoformat(
                 json_data.get("__REALTIME_TIMESTAMP", {}).get("__value__", "").replace("Z", "+00:00")
@@ -237,12 +237,12 @@ class LogParser:
             return None
     
     def _parse_line(self, line: str, source_file: str) -> Optional[LogEvent]:
-        """解析單一行日誌"""
+        """Parse a single log line"""
         timestamp = self._extract_timestamp(line)
         event_type, severity = self._classify_event(line)
         
         if event_type == EventType.SUSPICIOUS_EXECUTION:
-            # 不是特別的安全事件，可能是誤判
+            # Not a specific security event; likely a false positive
             if not any(keyword in line.lower() for keyword in ["failed", "error", "denied", "invalid"]):
                 return None
         
@@ -261,7 +261,7 @@ class LogParser:
         return event
     
     def _extract_timestamp(self, line: str) -> datetime:
-        """提取時間戳"""
+        """Extract a timestamp"""
         # ISO format: 2024-01-01T10:00:00
         iso_match = re.search(r"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})", line)
         if iso_match:
@@ -284,33 +284,33 @@ class LogParser:
         return datetime.now()
     
     def _classify_event(self, line: str) -> tuple:
-        """分類事件類型和嚴重程度"""
+        """Classify event type and severity"""
         line_lower = line.lower()
         
-        # 掃描所有模式
+        # Scan all patterns
         for category, config in self.patterns.items():
             for pattern in config["patterns"]:
                 if re.search(pattern, line_lower, re.IGNORECASE):
                     return config["event_type"], config["default_severity"]
         
-        # 預設為低風險
+        # Default to low risk
         return EventType.SUSPICIOUS_EXECUTION, SeverityEnum.LOW
     
     def _extract_description(self, line: str) -> str:
-        """從日誌行提取描述"""
-        # 移除時間戳和主機名
+        """Extract a description from a log line"""
+        # Remove timestamp and hostname
         description = re.sub(r"^\s*\w+\s+\d{1,2}\s+\d{2}:\d{2}:\d{2}\s+\S+\s+", "", line)
         description = re.sub(r"^\[.*?\]\s+", "", description)
-        return description[:200]  # 限制長度
+        return description[:200]  # Limit length
 
 
 class EventCorrelator:
-    """事件關聯分析"""
+    """Event correlation analysis"""
     
     @staticmethod
     def correlate_events(events: List[LogEvent]) -> List[List[LogEvent]]:
-        """關聯相關事件"""
-        # 按時間排序
+        """Correlate related events"""
+        # Sort by time
         sorted_events = sorted(events, key=lambda e: e.timestamp)
         
         correlated = []
@@ -318,7 +318,7 @@ class EventCorrelator:
         last_time = None
         
         for event in sorted_events:
-            # 如果時間差超過 5 分鐘，開始新的分組
+            # Start a new group if the time gap is over 5 minutes
             if (last_time and 
                 (event.timestamp - last_time).total_seconds() > 300):
                 if current_group:

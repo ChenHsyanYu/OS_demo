@@ -1,5 +1,5 @@
 """
-API 路由 - 警報管理
+API routes - alert management
 """
 
 from fastapi import APIRouter, HTTPException
@@ -13,28 +13,28 @@ router = APIRouter(prefix="/api/alerts", tags=["alerts"])
 
 ollama_client = OllamaClient()
 
-# 簡單的在記憶體存儲（生產環境應使用數據庫）
+# Simple in-memory storage; production should use a database.
 alerts_store = {}
 
 
 @router.get("/")
 async def get_alerts(severity: str = None, limit: int = 50) -> dict:
     """
-    取得警訊列表
+    Get the alert list.
     
-    可選過濾：severity (Critical/High/Medium/Low)
+    Optional filter: severity (Critical/High/Medium/Low).
     """
     try:
         alerts_list = list(alerts_store.values())
         
-        # 過濾嚴重程度
+        # Filter by severity
         if severity:
             alerts_list = [a for a in alerts_list if a.severity == severity]
         
-        # 按時間排序
+        # Sort by time
         alerts_list.sort(key=lambda a: a.timestamp, reverse=True)
         
-        # 限制數量
+        # Limit result count
         alerts_list = alerts_list[:limit]
         
         return {
@@ -49,22 +49,22 @@ async def get_alerts(severity: str = None, limit: int = 50) -> dict:
 
 @router.get("/{alert_id}")
 async def get_alert_detail(alert_id: str) -> dict:
-    """取得警訊詳情"""
+    """Get alert details"""
     if alert_id not in alerts_store:
-        raise HTTPException(status_code=404, detail="警訊不存在")
+        raise HTTPException(status_code=404, detail="Alert not found")
     
     try:
         alert = alerts_store[alert_id]
         
-        # 如果還沒有分析，執行 LLM 分析
+        # Run LLM analysis if it has not been generated yet
         if not alert.analysis:
             analysis_text = ""
             for chunk in ollama_client.generate_analysis(alert.events):
                 analysis_text += chunk
             
-            # 解析分析結果
+            # Parse analysis result
             alert.analysis = {
-                "analysis": analysis_text[:500],  # 簡化處理
+                "analysis": analysis_text[:500],  # Simplified handling
                 "risk_score": alert.risk_score,
             }
         
@@ -76,14 +76,14 @@ async def get_alert_detail(alert_id: str) -> dict:
 
 @router.delete("/{alert_id}")
 async def delete_alert(alert_id: str) -> dict:
-    """刪除警訊"""
+    """Delete an alert"""
     if alert_id in alerts_store:
         del alerts_store[alert_id]
-        return {"status": "success", "message": "警訊已刪除"}
+        return {"status": "success", "message": "Alert deleted"}
     
-    raise HTTPException(status_code=404, detail="警訊不存在")
+    raise HTTPException(status_code=404, detail="Alert not found")
 
 
 def add_alert(alert: Alert) -> None:
-    """新增警訊到存儲"""
+    """Add an alert to storage"""
     alerts_store[alert.id] = alert

@@ -4,17 +4,12 @@ import {
   Input,
   Button,
   List,
-  Spin,
   Alert,
   Empty,
   Space,
-  Tag,
-  Divider,
 } from 'antd';
 import {
   SendOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
   ClearOutlined,
 } from '@ant-design/icons';
 import apiService from '../services/api';
@@ -103,7 +98,7 @@ const ChatPage: React.FC = () => {
     try {
       let assistantResponse = '';
 
-      // 使用串流 API
+      // Use the streaming API.
       for await (const chunk of apiService.chatStream(
         input,
         sessionId
@@ -115,6 +110,7 @@ const ChatPage: React.FC = () => {
 
         if (chunk.content) {
           assistantResponse += chunk.content;
+          const nextContent = assistantResponse;
           setMessages((prev) => {
             const lastMsg = prev[prev.length - 1];
             if (lastMsg?.role === 'assistant') {
@@ -122,7 +118,7 @@ const ChatPage: React.FC = () => {
                 ...prev.slice(0, -1),
                 {
                   ...lastMsg,
-                  content: assistantResponse,
+                  content: nextContent,
                 },
               ];
             } else {
@@ -130,7 +126,7 @@ const ChatPage: React.FC = () => {
                 ...prev,
                 {
                   role: 'assistant',
-                  content: assistantResponse,
+                  content: nextContent,
                   timestamp: new Date().toISOString(),
                 },
               ];
@@ -139,7 +135,7 @@ const ChatPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError('無法獲取回應，請檢查後端服務');
+      setError('Unable to get a response. Please check the backend service.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -163,7 +159,7 @@ const ChatPage: React.FC = () => {
             onClick={handleClearChat}
             disabled={messages.length === 0}
           >
-            清空對話
+            Clear Chat
           </Button>
         </Space>
       }
@@ -191,9 +187,9 @@ const ChatPage: React.FC = () => {
         }}
       >
         {messages.length === 0 ? (
-          <Empty description="開始對話">
+          <Empty description="Start a conversation">
             <p style={{ fontSize: '12px', color: '#999' }}>
-              輸入您的問題，AI 將為您提供安全分析建議
+              Ask a question and the AI will provide security analysis guidance.
             </p>
           </Empty>
         ) : (
@@ -250,7 +246,7 @@ const ChatPage: React.FC = () => {
                     fontSize: '13px',
                   }}
                 >
-                  LLM 推理中...
+                  LLM is thinking...
                 </div>
               </div>
             )}
@@ -261,7 +257,7 @@ const ChatPage: React.FC = () => {
 
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
         <Input.TextArea
-          placeholder="輸入問題（Enter 送出，Shift+Enter 換行）"
+          placeholder="Enter a question (Enter to send, Shift+Enter for a new line)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -281,7 +277,7 @@ const ChatPage: React.FC = () => {
           loading={loading}
           disabled={!input.trim() || loading}
         >
-          發送
+          Send
         </Button>
       </div>
     </Card>

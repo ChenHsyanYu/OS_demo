@@ -5,7 +5,7 @@ from enum import Enum
 
 
 class SeverityEnum(str, Enum):
-    """事件嚴重程度"""
+    """Event severity"""
     CRITICAL = "Critical"
     HIGH = "High"
     MEDIUM = "Medium"
@@ -13,7 +13,7 @@ class SeverityEnum(str, Enum):
 
 
 class EventType(str, Enum):
-    """事件類型"""
+    """Event type"""
     PRIVILEGE_ESCALATION = "privilege_escalation"
     ANOMALOUS_LOGIN = "anomalous_login"
     NETWORK_ANOMALY = "network_anomaly"
@@ -23,7 +23,7 @@ class EventType(str, Enum):
 
 
 class LogEvent(BaseModel):
-    """日誌事件模型"""
+    """Log event model"""
     event_id: str
     timestamp: datetime
     source_file: str
@@ -34,7 +34,7 @@ class LogEvent(BaseModel):
 
 
 class RiskAssessment(BaseModel):
-    """風險評估模型"""
+    """Risk assessment model"""
     event_id: str
     risk_score: int = Field(ge=0, le=100)
     mitre_tactic: Optional[str] = None
@@ -46,7 +46,7 @@ class RiskAssessment(BaseModel):
 
 
 class Alert(BaseModel):
-    """警報模型"""
+    """Alert model"""
     id: str
     timestamp: datetime
     title: str
@@ -59,14 +59,14 @@ class Alert(BaseModel):
 
 
 class ChatMessage(BaseModel):
-    """對話消息模型"""
-    role: str  # "user" 或 "assistant"
+    """Chat message model"""
+    role: str  # "user" or "assistant"
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
 
 
 class ChatSession(BaseModel):
-    """對話會話模型"""
+    """Chat session model"""
     session_id: str
     messages: List[ChatMessage] = []
     related_alert_id: Optional[str] = None
@@ -74,7 +74,7 @@ class ChatSession(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    """上傳回應模型"""
+    """Upload response model"""
     status: str
     message: str
     analysis_id: Optional[str] = None
@@ -82,7 +82,7 @@ class UploadResponse(BaseModel):
 
 
 class HealthCheck(BaseModel):
-    """健康檢查模型"""
+    """Health check model"""
     status: str
     ollama_status: str
     version: str

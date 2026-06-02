@@ -1,7 +1,7 @@
 {
   "name": "os-antivirus-frontend",
   "version": "1.1.0",
-  "description": "OS 掃毒系統前端 - React + TypeScript",
+  "description": "OS Security Scanner frontend - React + TypeScript",
   "private": true,
   "dependencies": {
     "@ant-design/icons": "^5.2.0",

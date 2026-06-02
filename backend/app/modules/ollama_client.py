@@ -1,6 +1,6 @@
 """
-Ollama LLM 客戶端
-與本地 Ollama 伺服器進行交互，進行風險評估和分析
+Ollama LLM client
+Interacts with the local Ollama server for risk assessment and analysis.
 """
 
 import requests
@@ -12,7 +12,7 @@ from app.models import LogEvent, RiskAssessment
 
 
 class OllamaClient:
-    """Ollama 客戶端"""
+    """Ollama client"""
     
     def __init__(self):
         self.url = settings.ollama_url
@@ -20,7 +20,7 @@ class OllamaClient:
         self.timeout = settings.ollama_timeout
     
     def health_check(self) -> bool:
-        """檢查 Ollama 服務狀態"""
+        """Check Ollama service status"""
         try:
             response = requests.get(
                 f"{self.url}/api/tags",
@@ -36,16 +36,16 @@ class OllamaClient:
         context: Optional[str] = None
     ) -> Generator[str, None, None]:
         """
-        生成風險分析（串流）
+        Generate a risk analysis stream.
         """
-        # 構建提示詞
+        # Build the prompt.
         prompt = self._build_system_prompt(events, context)
         
-        # 調用 Ollama API
+        # Call the Ollama API.
         payload = {
             "model": self.model,
             "prompt": prompt,
-            "system": "你是一位 Linux 資安專家，提供漏洞分析與排除建議。排除建議不得包含系統升級。",
+            "system": "You are a Linux cybersecurity expert. Provide clear vulnerability analysis and remediation advice, but do not include system upgrades in remediation suggestions. Always respond in English.",
             "stream": True,
             "options": {
                 "temperature": settings.llm_temperature,
@@ -77,26 +77,27 @@ class OllamaClient:
                     if data.get("response"):
                         yield data["response"]
         except Exception as e:
-            raise Exception(f"Ollama API 錯誤: {str(e)}")
+            raise Exception(f"Ollama API error: {str(e)}")
     
     def generate_remediation(self, event: LogEvent) -> str:
         """
-        生成修復建議
+        Generate remediation guidance.
         """
         prompt = f"""
-根據以下 Linux 安全事件，提供具體的排除和預防步驟。
+Based on the following Linux security event, provide specific remediation and prevention steps.
 
-事件類型: {event.type}
-嚴重程度: {event.severity}
-原始日誌: {event.raw_log}
+Event type: {event.type}
+Severity: {event.severity}
+Original log: {event.raw_log}
 
-請提供：
-1. 漏洞說明：此攻擊對系統的影響
-2. 漏洞原因：可能的入侵途徑
-3. 如何排除：具體的修復步驟（禁止包含系統升級）
-4. 如何預防：系統加固建議
+Please include:
+1. Vulnerability description: the impact of this attack on the system
+2. Root cause: possible intrusion path
+3. Remediation: specific repair steps (do not include system upgrades)
+4. Prevention: system hardening recommendations
 
-使用繁體中文回應，並包含具體的 Linux 命令。
+Describe the event in plain, easy-to-understand language.
+Please respond in English and include concrete Linux commands.
 """
         
         try:
@@ -117,12 +118,12 @@ class OllamaClient:
             if response.status_code == 200:
                 return response.json().get("response", "")
         except Exception as e:
-            print(f"錯誤: {e}")
+            print(f"Error: {e}")
         
         return ""
     
     def _build_system_prompt(self, events: List[LogEvent], context: Optional[str] = None) -> str:
-        """構建系統提示詞"""
+        """Build the system prompt"""
         events_json = json.dumps(
             [
                 {
@@ -140,30 +141,31 @@ class OllamaClient:
         )
         
         prompt = f"""
-請分析以下 Linux 系統日誌事件序列，並進行風險評估。
+Please analyze the following Linux system log events and perform a risk assessment.
 
-事件序列（JSON 格式）：
+Event sequence (JSON format):
 {events_json}
 
-請提供以下分析：
-1. 風險評分（0-100）
-2. 對應的 MITRE ATT&CK 戰術和技術
-3. 相關的 CVE 編號（如有）
-4. 詳細的分析說明
-5. 具體的排除步驟（禁止包含系統升級指令）
-6. 預防建議
+Provide the following analysis:
+1. Risk score (0-100)
+2. Relevant MITRE ATT&CK tactics and techniques
+3. Related CVE identifiers, if any
+4. A detailed explanation of the findings
+5. Specific remediation steps (do not include system upgrades)
+6. Prevention recommendations
 
-使用繁體中文回應，並確保分析內容的一致性。
+Describe each event in simple, plain language so it is easy to understand.
+Please ensure the response is consistent and written in English.
 """
         
         if context:
-            prompt += f"\n\n額外背景信息：\n{context}"
+            prompt += f"\n\nAdditional context:\n{context}"
         
         return prompt
 
 
 class RiskScorer:
-    """風險評分器"""
+    """Risk scorer"""
     
     @staticmethod
     def calculate_risk_score(
@@ -172,17 +174,17 @@ class RiskScorer:
         frequency: int = 1
     ) -> int:
         """
-        計算風險評分
+        Calculate the risk score.
         
         Args:
-            event_type: 事件類型
-            severity: 嚴重程度
-            frequency: 事件頻率
+            event_type: Event type
+            severity: Severity
+            frequency: Event frequency
         
         Returns:
-            風險評分 (0-100)
+            Risk score (0-100)
         """
-        # 基礎分數根據嚴重程度
+        # Base score by severity
         base_scores = {
             "Critical": 90,
             "High": 70,
@@ -190,7 +192,7 @@ class RiskScorer:
             "Low": 20,
         }
         
-        # 事件類型加權
+        # Event type weights
         type_weights = {
             "privilege_escalation": 1.5,
             "anomalous_login": 1.3,
@@ -203,7 +205,7 @@ class RiskScorer:
         base = base_scores.get(severity, 50)
         weight = type_weights.get(event_type, 1.0)
         
-        # 根據頻率調整
+        # Adjust by frequency
         frequency_factor = min(1 + (frequency - 1) * 0.1, 1.5)
         
         score = int(base * weight * frequency_factor)

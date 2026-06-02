@@ -1,5 +1,5 @@
 /**
- * 類型定義
+ * Type definitions
  */
 
 export enum SeverityLevel {

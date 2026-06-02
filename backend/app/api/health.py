@@ -1,5 +1,5 @@
 """
-API 路由 - 健康檢查
+API routes - health check
 """
 
 from fastapi import APIRouter
@@ -15,9 +15,9 @@ ollama_client = OllamaClient()
 @router.get("/api/health")
 async def health_check() -> HealthCheck:
     """
-    服務健康檢查
+    Service health check.
     
-    檢查後端和 Ollama 的狀態
+    Checks backend and Ollama status.
     """
     ollama_status = "healthy" if ollama_client.health_check() else "unhealthy"
     

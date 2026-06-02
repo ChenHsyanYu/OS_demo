@@ -1,5 +1,5 @@
 """
-API 路由 - 對話介面
+API routes - chat interface
 """
 
 from fastapi import APIRouter, HTTPException
@@ -21,12 +21,12 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 ollama_client = OllamaClient()
 log_parser = LogParser()
 
-# 簡單的在記憶體存儲（生產環境應使用數據庫）
+# Simple in-memory storage; production should use a database.
 chat_sessions = {}
 
 
 class ChatRequest(BaseModel):
-    """對話請求"""
+    """Chat request"""
     session_id: Optional[str] = None
     message: str
     alert_id: Optional[str] = None
@@ -35,12 +35,12 @@ class ChatRequest(BaseModel):
 @router.post("")
 async def chat(request: ChatRequest) -> StreamingResponse:
     """
-    LLM 對話端點（串流回應）
+    LLM chat endpoint with streaming responses.
     
-    支援多輪對話，可結合上傳的日誌進行專項排查
+    Supports multi-turn conversations and uploaded log context.
     """
     try:
-        # 獲取或建立會話
+        # Get or create session
         session_id = request.session_id or f"session_{datetime.now().timestamp()}"
         
         if session_id not in chat_sessions:
@@ -51,14 +51,15 @@ async def chat(request: ChatRequest) -> StreamingResponse:
         
         session = chat_sessions[session_id]
         
-        # 添加用戶消息
+        # Add user message
         user_msg = ChatMessage(
             role="user",
             content=request.message,
         )
         session.messages.append(user_msg)
         
-        # 生成回應流（在 thread pool 執行同步 Ollama 呼叫，避免 block event loop）
+        # Generate the response stream in a thread pool so the synchronous
+        # Ollama call does not block the event loop.
         async def async_response_generator():
             loop = asyncio.get_event_loop()
             queue: asyncio.Queue = asyncio.Queue()
@@ -69,7 +70,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
                     full_response = ""
                     for chunk in ollama_client.generate_analysis(
                         events=[],
-                        context=context + f"\n\n用戶提問: {request.message}"
+                        context=context + f"\n\nUser question: {request.message}"
                     ):
                         full_response += chunk
                         loop.call_soon_threadsafe(queue.put_nowait, json.dumps({
@@ -87,7 +88,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
                         "session_id": session_id,
                     }) + "\n")
                 finally:
-                    loop.call_soon_threadsafe(queue.put_nowait, None)  # sentinel
+                    loop.call_soon_threadsafe(queue.put_nowait, None)  # Sentinel
 
             future = loop.run_in_executor(_executor, run_ollama)
 
@@ -107,9 +108,9 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 
 @router.get("/sessions/{session_id}")
 async def get_session(session_id: str) -> dict:
-    """獲取對話會話"""
+    """Get a chat session"""
     if session_id not in chat_sessions:
-        raise HTTPException(status_code=404, detail="會話不存在")
+        raise HTTPException(status_code=404, detail="Session not found")
     
     session = chat_sessions[session_id]
     return {
@@ -129,18 +130,18 @@ async def get_session(session_id: str) -> dict:
 
 @router.delete("/sessions/{session_id}")
 async def delete_session(session_id: str) -> dict:
-    """刪除對話會話"""
+    """Delete a chat session"""
     if session_id in chat_sessions:
         del chat_sessions[session_id]
-        return {"status": "success", "message": "會話已刪除"}
+        return {"status": "success", "message": "Session deleted"}
     
-    raise HTTPException(status_code=404, detail="會話不存在")
+    raise HTTPException(status_code=404, detail="Session not found")
 
 
 def _build_context(session: ChatSession) -> str:
-    """構建對話上下文"""
-    context = "對話歷史:\n"
-    for msg in session.messages[-5:]:  # 最近 5 條消息
+    """Build chat context"""
+    context = "Conversation history:\n"
+    for msg in session.messages[-5:]:  # Last 5 messages
         context += f"{msg.role}: {msg.content[:200]}\n"
     
     return context

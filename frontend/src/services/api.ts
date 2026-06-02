@@ -1,5 +1,5 @@
 /**
- * API 服務客戶端
+ * API service client
  */
 
 import axios, { AxiosInstance } from 'axios';
@@ -19,12 +19,12 @@ class ApiService {
     });
   }
 
-  // 掃描端點
+  // Scan endpoint
   scanSystemLogs() {
     return this.client.post('/api/scan/log');
   }
 
-  // 上傳日誌
+  // Upload log
   uploadLog(file: File) {
     const formData = new FormData();
     formData.append('file', file);
@@ -35,24 +35,24 @@ class ApiService {
     });
   }
 
-  // 獲取警報列表
+  // Get alerts
   getAlerts(severity?: string, limit?: number) {
     return this.client.get('/api/alerts', {
       params: { severity, limit },
     });
   }
 
-  // 獲取警報詳情
+  // Get alert details
   getAlertDetail(alertId: string) {
     return this.client.get(`/api/alerts/${alertId}`);
   }
 
-  // 刪除警報
+  // Delete alert
   deleteAlert(alertId: string) {
     return this.client.delete(`/api/alerts/${alertId}`);
   }
 
-  // 對話接口
+  // Chat endpoint
   async *chatStream(
     message: string,
     sessionId?: string,
@@ -105,20 +105,22 @@ class ApiService {
     }
   }
 
-  // 獲取對話會話
+  // Get chat session
   getChatSession(sessionId: string) {
     return this.client.get(`/api/chat/sessions/${sessionId}`);
   }
 
-  // 刪除對話會話
+  // Delete chat session
   deleteChatSession(sessionId: string) {
     return this.client.delete(`/api/chat/sessions/${sessionId}`);
   }
 
-  // 健康檢查
+  // Health check
   healthCheck() {
     return this.client.get('/api/health');
   }
 }
 
-export default new ApiService();
+const apiService = new ApiService();
+
+export default apiService;

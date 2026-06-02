@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, Row, Col, Button, Spin, Alert, Empty, Tabs, Table, Drawer } from 'antd';
-import { FilterOutlined, DeleteOutlined, FileOutlined } from '@ant-design/icons';
+import { Card, Button, Spin, Alert, Empty, Tabs, Table, Drawer } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import apiService from '../services/api';
-import { Alert as AlertType, LogEvent, SeverityLevel } from '../types';
+import { Alert as AlertType, SeverityLevel } from '../types';
 import { getSeverityColor, formatDate, formatEventType } from '../utils/helpers';
 
 const AlertsPage: React.FC = () => {
@@ -20,7 +20,7 @@ const AlertsPage: React.FC = () => {
       setAlerts(response.data.alerts);
       setError(null);
     } catch (err) {
-      setError('無法獲取警訊數據');
+      setError('Unable to load alert data.');
       console.error(err);
     } finally {
       setLoading(false);
@@ -36,7 +36,7 @@ const AlertsPage: React.FC = () => {
       await apiService.deleteAlert(alertId);
       setAlerts(alerts.filter(a => a.id !== alertId));
     } catch (err) {
-      console.error('刪除失敗:', err);
+      console.error('Delete failed:', err);
     }
   };
 
@@ -47,12 +47,12 @@ const AlertsPage: React.FC = () => {
 
   const columns = [
     {
-      title: '標題',
+      title: 'Title',
       dataIndex: 'title',
       key: 'title',
     },
     {
-      title: '嚴重程度',
+      title: 'Severity',
       dataIndex: 'severity',
       key: 'severity',
       render: (severity: SeverityLevel) => (
@@ -62,7 +62,7 @@ const AlertsPage: React.FC = () => {
       ),
     },
     {
-      title: '風險評分',
+      title: 'Risk Score',
       dataIndex: 'risk_score',
       key: 'risk_score',
       render: (score: number) => (
@@ -72,18 +72,18 @@ const AlertsPage: React.FC = () => {
       ),
     },
     {
-      title: '事件數',
+      title: 'Events',
       dataIndex: 'event_count',
       key: 'event_count',
     },
     {
-      title: '時間',
+      title: 'Time',
       dataIndex: 'timestamp',
       key: 'timestamp',
       render: (timestamp: string) => formatDate(timestamp),
     },
     {
-      title: '操作',
+      title: 'Actions',
       key: 'action',
       render: (_: any, record: AlertType) => (
         <Button.Group>
@@ -95,7 +95,7 @@ const AlertsPage: React.FC = () => {
               setDrawerVisible(true);
             }}
           >
-            詳情
+            Details
           </Button>
           <Button
             danger
@@ -113,39 +113,39 @@ const AlertsPage: React.FC = () => {
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: '16px' }} />}
 
       <Card
-        title="警訊中心"
+        title="Alert Center"
         extra={
           <Button.Group>
             <Button
               type={filterSeverity === null ? 'primary' : 'default'}
               onClick={() => handleFilterChange('all')}
             >
-              全部
+              All
             </Button>
             <Button
               type={filterSeverity === 'Critical' ? 'primary' : 'default'}
               danger
               onClick={() => handleFilterChange('Critical')}
             >
-              危機
+              Critical
             </Button>
             <Button
               type={filterSeverity === 'High' ? 'primary' : 'default'}
               onClick={() => handleFilterChange('High')}
             >
-              高危
+              High
             </Button>
             <Button
               type={filterSeverity === 'Medium' ? 'primary' : 'default'}
               onClick={() => handleFilterChange('Medium')}
             >
-              中危
+              Medium
             </Button>
           </Button.Group>
         }
       >
         {alerts.length === 0 ? (
-          <Empty description="暫無警訊" />
+          <Empty description="No alerts" />
         ) : (
           <Table
             dataSource={alerts}
@@ -157,9 +157,9 @@ const AlertsPage: React.FC = () => {
         )}
       </Card>
 
-      {/* 警訊詳情抽屜 */}
+      {/* Alert details drawer */}
       <Drawer
-        title="警訊詳情"
+        title="Alert Details"
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
@@ -168,10 +168,10 @@ const AlertsPage: React.FC = () => {
         {selectedAlert && (
           <div>
             <div style={{ marginBottom: '16px' }}>
-              <strong>標題:</strong> {selectedAlert.title}
+              <strong>Title:</strong> {selectedAlert.title}
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <strong>嚴重程度:</strong>
+              <strong>Severity:</strong>
               <span
                 style={{
                   marginLeft: '8px',
@@ -183,32 +183,32 @@ const AlertsPage: React.FC = () => {
               </span>
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <strong>風險評分:</strong> {selectedAlert.risk_score}
+              <strong>Risk Score:</strong> {selectedAlert.risk_score}
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <strong>事件數:</strong> {selectedAlert.event_count}
+              <strong>Events:</strong> {selectedAlert.event_count}
             </div>
             <div style={{ marginBottom: '16px' }}>
-              <strong>時間:</strong> {formatDate(selectedAlert.timestamp)}
+              <strong>Time:</strong> {formatDate(selectedAlert.timestamp)}
             </div>
 
             <Tabs
               items={[
                 {
                   key: 'events',
-                  label: '相關事件',
+                  label: 'Related Events',
                   children: (
                     <div>
                       {selectedAlert.events.map((event, idx) => (
                         <Card key={idx} size="small" style={{ marginBottom: '8px' }}>
                           <div>
-                            <strong>類型:</strong> {formatEventType(event.type)}
+                            <strong>Type:</strong> {formatEventType(event.type)}
                           </div>
                           <div>
-                            <strong>時間:</strong> {formatDate(event.timestamp)}
+                            <strong>Time:</strong> {formatDate(event.timestamp)}
                           </div>
                           <div>
-                            <strong>來源:</strong> {event.source_file}
+                            <strong>Source:</strong> {event.source_file}
                           </div>
                           <div style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}>
                             {event.raw_log.substring(0, 200)}...
@@ -220,18 +220,18 @@ const AlertsPage: React.FC = () => {
                 },
                 {
                   key: 'analysis',
-                  label: '分析',
+                  label: 'Analysis',
                   children: (
                     <div>
                       {selectedAlert.analysis ? (
                         <>
                           <div>
-                            <strong>分析:</strong>
+                            <strong>Analysis:</strong>
                             <p>{selectedAlert.analysis.analysis}</p>
                           </div>
                         </>
                       ) : (
-                        <Empty description="暫無分析" />
+                        <Empty description="No analysis yet" />
                       )}
                     </div>
                   ),

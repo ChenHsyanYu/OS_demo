@@ -1,5 +1,5 @@
 """
-文件處理工具
+File handling utilities
 """
 
 import os
@@ -9,40 +9,40 @@ from app.config import settings
 
 
 class FileValidator:
-    """文件驗證器"""
+    """File validator"""
     
     @staticmethod
     def validate_upload(filename: str, file_size: int) -> Tuple[bool, str]:
         """
-        驗證上傳的文件
+        Validate an uploaded file.
         
         Returns:
-            (是否有效, 錯誤消息)
+            (is_valid, error_message)
         """
-        # 檢查檔案大小
+        # Check file size
         if file_size > settings.max_upload_size:
-            return False, f"檔案大小超過限制（最大 {settings.max_upload_size / 1024 / 1024} MB）"
+            return False, f"File size exceeds the limit (maximum {settings.max_upload_size / 1024 / 1024} MB)"
         
-        # 檢查副檔名
+        # Check file extension
         ext = Path(filename).suffix.lstrip('.').lower()
         if ext not in settings.allowed_extensions:
-            return False, f"不支援的檔案格式。允許格式：{', '.join(settings.allowed_extensions)}"
+            return False, f"Unsupported file format. Allowed formats: {', '.join(settings.allowed_extensions)}"
         
-        # 檢查 Magic Number
+        # Check magic number
         return True, ""
     
     @staticmethod
     def check_magic_number(file_bytes: bytes, extension: str) -> bool:
-        """檢查檔案的 Magic Number"""
+        """Check the file magic number"""
         if extension.lower() == "txt":
-            # .txt 檔案檢查：應該包含可讀字符
+            # .txt files should contain readable characters
             try:
                 file_bytes.decode('utf-8')
                 return True
             except:
                 pass
         elif extension.lower() == "log":
-            # .log 檔案檢查
+            # .log file check
             try:
                 file_bytes.decode('utf-8')
                 return True
@@ -53,14 +53,14 @@ class FileValidator:
 
 
 class FileStorage:
-    """文件存儲管理"""
+    """File storage manager"""
     
     def __init__(self):
         self.upload_dir = settings.upload_dir
         os.makedirs(self.upload_dir, exist_ok=True)
     
     def save_upload(self, filename: str, content: bytes) -> str:
-        """保存上傳的文件"""
+        """Save an uploaded file"""
         file_path = os.path.join(self.upload_dir, filename)
         
         with open(file_path, 'wb') as f:
@@ -69,18 +69,18 @@ class FileStorage:
         return file_path
     
     def delete_file(self, file_path: str) -> bool:
-        """刪除文件"""
+        """Delete a file"""
         try:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 return True
         except Exception as e:
-            print(f"錯誤刪除文件 {file_path}: {e}")
+            print(f"Error deleting file {file_path}: {e}")
         
         return False
     
     def cleanup_old_files(self, days: int = 7) -> None:
-        """清理舊文件"""
+        """Clean up old files"""
         import time
         current_time = time.time()
         

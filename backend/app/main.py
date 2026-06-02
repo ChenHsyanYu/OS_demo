@@ -1,5 +1,5 @@
 """
-OS 掃毒系統 - FastAPI 主應用
+OS Security Scanner - FastAPI main application
 """
 
 from fastapi import FastAPI, HTTPException
@@ -8,36 +8,36 @@ from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import os
 
-# 導入 API 路由
+# Import API routers
 from app.api import scan, upload, chat, alerts, health
 from app.config import settings
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """應用生命周期管理"""
-    # 啟動
-    print(f"啟動 {settings.app_name} v{settings.app_version}")
+    """Application lifecycle management"""
+    # Startup
+    print(f"Starting {settings.app_name} v{settings.app_version}")
     
-    # 確保上傳目錄存在
+    # Ensure the upload directory exists
     os.makedirs(settings.upload_dir, exist_ok=True)
     
     yield
     
-    # 關閉
-    print("應用關閉")
+    # Shutdown
+    print("Application shutdown")
 
 
-# 建立 FastAPI 應用
+# Create FastAPI application
 app = FastAPI(
     title=settings.app_name,
-    description="Linux 系統安全監控與威脅分析系統",
+    description="Linux system security monitoring and threat analysis system",
     version=settings.app_version,
     lifespan=lifespan,
 )
 
 
-# CORS 中間件
+# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -47,7 +47,7 @@ app.add_middleware(
 )
 
 
-# 包含 API 路由
+# Include API routers
 app.include_router(scan.router)
 app.include_router(upload.router)
 app.include_router(chat.router)
@@ -57,7 +57,7 @@ app.include_router(health.router)
 
 @app.get("/")
 async def root():
-    """根端點"""
+    """Root endpoint"""
     return {
         "name": settings.app_name,
         "version": settings.app_version,
@@ -68,7 +68,7 @@ async def root():
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
-    """HTTP 異常處理"""
+    """HTTP exception handler"""
     return {
         "error": exc.detail,
         "status_code": exc.status_code,

@@ -1,5 +1,5 @@
 /**
- * 工具函數
+ * Utility functions
  */
 
 import { SeverityLevel } from '../types';
@@ -23,17 +23,17 @@ export function getSeverityLevel(score: number): SeverityLevel {
 
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
-  return date.toLocaleString('zh-TW');
+  return date.toLocaleString('en-US');
 }
 
 export function formatEventType(type: string): string {
   const typeMap: Record<string, string> = {
-    'privilege_escalation': '權限提升',
-    'anomalous_login': '異常登入',
-    'network_anomaly': '網路異常',
-    'suspicious_execution': '可疑執行',
-    'file_tampering': '檔案竄改',
-    'rootkit_signature': 'Rootkit 特徵',
+    'privilege_escalation': 'Privilege Escalation',
+    'anomalous_login': 'Anomalous Login',
+    'network_anomaly': 'Network Anomaly',
+    'suspicious_execution': 'Suspicious Execution',
+    'file_tampering': 'File Tampering',
+    'rootkit_signature': 'Rootkit Signature',
   };
   return typeMap[type] || type;
 }

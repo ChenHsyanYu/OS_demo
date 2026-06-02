@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import enUS from 'antd/locale/en_US';
 import AppLayout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Alerts from './pages/Alerts';
@@ -11,7 +11,7 @@ import './App.css';
 
 function App() {
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider locale={enUS}>
       <Router>
         <AppLayout>
           <Routes>

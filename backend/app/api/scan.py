@@ -1,5 +1,5 @@
 """
-API 路由 - 掃描和分析端點
+API routes - scan and analysis endpoints
 """
 
 from fastapi import APIRouter, HTTPException
@@ -23,9 +23,9 @@ ollama_client = OllamaClient()
 @router.post("/log")
 async def scan_system_logs() -> dict:
     """
-    掃描系統日誌
+    Scan system logs.
     
-    支援的日誌格式：
+    Supported log formats:
     - /var/log/syslog
     - /var/log/auth.log
     - /var/log/kern.log
@@ -34,7 +34,7 @@ async def scan_system_logs() -> dict:
     try:
         events = []
         
-        # 支援的日誌檔案
+        # Supported log files
         log_files = [
             "/var/log/syslog",
             "/var/log/messages",
@@ -48,9 +48,9 @@ async def scan_system_logs() -> dict:
                     file_events = log_parser.parse_log_file(log_file)
                     events.extend(file_events)
                 except Exception as e:
-                    print(f"解析 {log_file} 失敗: {e}")
+                    print(f"Failed to parse {log_file}: {e}")
         
-        # 如果可用，也解析 journald
+        # Parse journald if available
         try:
             result = subprocess.run(
                 ["journalctl", "-n", "1000", "-o", "json"],
@@ -73,10 +73,10 @@ async def scan_system_logs() -> dict:
         except:
             pass
         
-        # 關聯事件
+        # Correlate events
         event_groups = correlator.correlate_events(events)
         
-        # 生成警報
+        # Generate alerts
         alerts = []
         for event_group in event_groups:
             if event_group:
@@ -96,8 +96,8 @@ async def scan_system_logs() -> dict:
 
 
 def _create_alert(event_group: List[LogEvent]) -> Alert:
-    """從事件組建立警報"""
-    # 計算最高嚴重程度
+    """Create an alert from an event group"""
+    # Calculate the highest severity
     severity_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
     max_severity = min(
         (severity_order.get(e.severity.value, 3) for e in event_group),
@@ -106,7 +106,7 @@ def _create_alert(event_group: List[LogEvent]) -> Alert:
     severity_map = {0: SeverityEnum.CRITICAL, 1: SeverityEnum.HIGH, 
                    2: SeverityEnum.MEDIUM, 3: SeverityEnum.LOW}
     
-    # 計算風險評分
+    # Calculate risk score
     risk_scores = [
         RiskScorer.calculate_risk_score(e.type.value, e.severity.value)
         for e in event_group
@@ -116,7 +116,7 @@ def _create_alert(event_group: List[LogEvent]) -> Alert:
     alert = Alert(
         id=f"alert_{event_group[0].timestamp.timestamp()}",
         timestamp=event_group[0].timestamp,
-        title=f"偵測到 {event_group[0].type.value} 事件",
+        title=f"Detected {event_group[0].type.value} event",
         severity=severity_map[max_severity],
         risk_score=avg_risk,
         event_count=len(event_group),
